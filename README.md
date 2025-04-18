@@ -19,7 +19,7 @@ pip install -r requirement.txt
 ````
 Rscript -e 'install.packages("mclust",repos="http://cran.us.r-project.org")'
 
-```
+````
 
 ````
 pip install https://github.com/gospelnnadi/GIST.git

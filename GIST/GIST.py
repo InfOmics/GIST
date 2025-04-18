@@ -7,7 +7,6 @@ from tqdm import tqdm
 from torch import nn
 import torch.nn.functional as F
 from scipy.sparse import issparse
-import matplotlib.pyplot as plt
 
 
 class GIST() :
@@ -153,7 +152,6 @@ class GIST() :
         x_corrupted = None
         best_loss = float("inf")  # Track lowest loss
         best_model_state = None   # Variable to store best model weights
-        losses = []  # Store loss values for plotting
 
         for epoch in tqdm(range(self.epochs), desc="Training Progress"):
             self.model.train()
@@ -173,8 +171,6 @@ class GIST() :
             loss.backward()    
             optimizer.step()
 
-            losses.append(loss.item())
-
             # Save best model
             if loss.item() < best_loss:
                 best_loss = loss.item()
@@ -192,14 +188,6 @@ class GIST() :
             self.model.eval()
             emb = self.model(self.features, x_corrupted, self.adj, self.sp_neigh, DGSItraining=False)
             self.adata.obsm["DGSI"] = emb.float().detach().cpu().numpy()
-                # Plot loss curve
-        plt.figure(figsize=(8, 5))
-        plt.plot(range(len(losses)), losses, label="Total Loss", color="blue")
-        plt.xlabel("Epochs")
-        plt.ylabel("Loss")
-        plt.title("Training Loss Over Epochs")
-        plt.legend()
-        plt.grid()
-        plt.savefig(f"outputs/loss_per_epoch_plot.png", dpi=300)  # Save the plot as an image file
+               
 
         return self.adata
