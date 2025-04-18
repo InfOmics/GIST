@@ -22,7 +22,7 @@ Rscript -e 'install.packages("mclust",repos="http://cran.us.r-project.org")'
 ````
 
 ````
-pip install https://github.com/gospelnnadi/GIST.git
+pip install git+https://github.com/gospelnnadi/GIST.git
 
 ````
 
