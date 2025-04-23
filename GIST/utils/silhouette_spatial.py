@@ -12,7 +12,6 @@ from scipy.sparse import issparse
 
 from collections import defaultdict, deque
 
-# Define a function to get atol for dtype
 def _atol_for_type(dtype):
     """
     Get the absolute tolerance for a given numpy data type.
@@ -151,12 +150,12 @@ def construct_interaction(adata, n_neighbors=6):
     interaction[row_indices, col_indices] = 1
 
     # Ensure symmetry
-    adata.obsm['sp_neigh'] = interaction
+    adata.obsm['spatial_neigh'] = interaction
 
 
 
 
-def compute_penalty(sp_neigh, labels, spot_idx):
+def compute_penalty(spatial_neigh, labels, spot_idx):
     """
     Compute cluster connectivity penalty based on spatial disconnection.
 
@@ -177,7 +176,6 @@ def compute_penalty(sp_neigh, labels, spot_idx):
         mean_penalty : float
             Average penalty across all clusters.
     """
-
     unique_labels = set(labels.values())
     penalty_dict = {}
     penalties = []
@@ -209,7 +207,7 @@ def compute_penalty(sp_neigh, labels, spot_idx):
 
                 # Get neighbors efficiently using the precomputed index
                 node_idx = spot_to_index[current_spot]  # O(1) lookup instead of O(n)
-                neighbors = spot_idx[sp_neigh[node_idx] > 0]  # Efficient filtering
+                neighbors = spot_idx[spatial_neigh[node_idx] > 0]  # Efficient filtering
 
                 for neighbor in neighbors:
                     if neighbor not in visited and labels.get(neighbor) == label:
@@ -229,6 +227,7 @@ def compute_penalty(sp_neigh, labels, spot_idx):
 
 
 def _silhouette_reduce(D_chunk, start, labels, label_freqs, adata, is_visium=True):
+ 
     """
     Helper function to compute intra- and inter-cluster distances for a chunk of data.
 
@@ -269,12 +268,12 @@ def _silhouette_reduce(D_chunk, start, labels, label_freqs, adata, is_visium=Tru
             for neighbor in neighbors:
                 interaction[spot_index[spot], spot_index[neighbor]] = 1
 
-        adata.obsm['sp_neigh'] = interaction
+        adata.obsm['spatial_neigh'] = interaction
     else:
         construct_interaction(adata, n_neighbors=6)
 
     label_dict = {spot_ids[i]: labels[i] for i in range(len(spot_ids))}
-    penalties, mean_penalty = compute_penalty(adata.obsm['sp_neigh'], label_dict, adata.obs.index)
+    penalties, mean_penalty = compute_penalty(adata.obsm['spatial_neigh'], label_dict, adata.obs.index)
     adata.uns['average_penalty'] = mean_penalty
 
     if issparse(D_chunk):

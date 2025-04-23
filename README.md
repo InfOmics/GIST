@@ -15,7 +15,7 @@ which R
 
 install requirements
 ````
-pip install -r requirement.txt
+pip install -r requirements.txt
 
 ````
 Install mclust packages

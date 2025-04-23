@@ -1,12 +1,14 @@
-from GIST.preprocess import pca
-
 import ot
+import random
 import numpy as np
+import pandas as pd
 import scanpy as sc
 import squidpy as sq
+
 from sklearn import metrics
+from sklearn.metrics import davies_bouldin_score, silhouette_score
 from .silhouette_spatial import silhouette_spatial_score
-from collections import Counter
+from .utilities import pca
 
 import os
 
@@ -30,9 +32,9 @@ def refine_label(adata, radius=50, label_key='label'):
         Refined labels where each cell is assigned the most common label
         among its spatial neighbors.
     """
-    """ n_neigh = radius
-    new_type = []
-    old_type = adata.obs[key].values
+    n_neigh = radius
+    refined_label = []
+    old_type = adata.obs[label_key].values
     
     #calculate distance
     position = adata.obsm['spatial']
@@ -47,31 +49,13 @@ def refine_label(adata, radius=50, label_key='label'):
         for j in range(1, n_neigh+1):
             neigh_type.append(old_type[index[j]])
         max_type = max(neigh_type, key=neigh_type.count)
-        new_type.append(max_type)
+        refined_label.append(max_type)
         
-    new_type = [str(i) for i in list(new_type)]    
+    refined_label = [str(i) for i in list(refined_label)]    
     
-    return new_type """
+    return refined_label
 
-    spatial_coords = adata.obsm['spatial']
-    original_labels = adata.obs[label_key].values
-    distance_matrix = ot.dist(spatial_coords, spatial_coords, metric='euclidean')
-
-    num_cells = distance_matrix.shape[0]
-    refined_labels = []
-
-    for i in range(num_cells):
-        distances_to_others = distance_matrix[i]
-        neighbor_indices = distances_to_others.argsort()[1:radius + 1]  # exclude self
-
-        neighbor_labels = original_labels[neighbor_indices]
-        most_common_label = Counter(neighbor_labels).most_common(1)[0][0]
-
-        refined_labels.append(str(most_common_label))
-
-    return refined_labels
-
-def clusters_n_plot(adata, emb, savepath, num_cluster=7, refinement=True, seed=35, plot_size=0,  is_visium=True):
+def cluster_n_plot(adata, savepath, num_cluster=7,refinement=True, seed=35, plot_size=0,  is_visium=True):
     """
     Perform clustering, optional label refinement, evaluation, and spatial plotting.
 
@@ -109,11 +93,13 @@ def clusters_n_plot(adata, emb, savepath, num_cluster=7, refinement=True, seed=3
         - Davies-Bouldin Score
     """
  
-    data= pca(emb,n_components=20, random_state=seed) 
+ 
+    data= pca(adata.obsm["GIST_emb"],n_components=20, random_state=seed) 
 
     np.random.seed(seed)
     import rpy2.robjects as robjects
     robjects.r.library("mclust")
+
     import rpy2.robjects.numpy2ri
     rpy2.robjects.numpy2ri.activate()
     r_random_seed = robjects.r['set.seed']
@@ -159,17 +145,17 @@ def clusters_n_plot(adata, emb, savepath, num_cluster=7, refinement=True, seed=3
        ARI,ami,purity,homogeneity,completeness,v_measure=0.0,0.0,0.0,0.0,0.0,0.0
     
     if len(adata.obs["cluster"])>1:
-        
-        silhouette_spatial = silhouette_spatial_score(adata.obsm["X_pca"], adata.obs["cluster"], adata, metric="cosine", is_visium=is_visium)  
+
+        silhouette_spatial = silhouette_spatial_score(adata.obsm["X_pca"], adata.obs["cluster"], adata, metric="cosine", is_visium=is_visium) 
         print("silhouette spatial:",np.round(silhouette_spatial,4))
         
         penalty=adata.uns['average_penalty']
-        print("SSS average_penalty:",np.round(penalty,4)) 
+        print("SSS average_penalty:",np.round(penalty,4))
 
-        silhouette = metrics.silhouette_score(adata.obsm["X_pca"], adata.obs["cluster"], metric='cosine') 
+        silhouette = silhouette_score(adata.obsm["X_pca"], adata.obs["cluster"], metric='cosine') 
         print("silhouette:",np.round(silhouette,4))
 
-        davies_bouldin=metrics.davies_bouldin_score(adata.obsm["X_pca"], adata.obs["cluster"]) 
+        davies_bouldin=davies_bouldin_score(adata.obsm["X_pca"], adata.obs["cluster"]) 
         print("davies_bouldin:",np.round(davies_bouldin,4)) 
     else: 
         silhouette_spatial,silhouette,davies_bouldin = 0.0, 0.0, 0.0
@@ -177,7 +163,7 @@ def clusters_n_plot(adata, emb, savepath, num_cluster=7, refinement=True, seed=3
 
     if plot_size:
 
-      os.makedirs("figures/show/outputs/", exist_ok=True)
+      os.makedirs("figures/show/outputs/dgsignn", exist_ok=True)
 
       sc.pl.spatial(adata, color="cluster", spot_size=plot_size,save=f"/{savepath}") 
       adata.uns.pop('cluster_colors')
@@ -186,7 +172,7 @@ def clusters_n_plot(adata, emb, savepath, num_cluster=7, refinement=True, seed=3
       sq.pl.spatial_scatter(adata, color="cluster",cmap='Paired', save=savepath) 
       adata.uns.pop('cluster_colors')
 
-    #return ARI,ami,purity,homogeneity,completeness,v_measure,silhouette_spatial,penalty, silhouette,davies_bouldin
+    return ARI,ami,purity,homogeneity,completeness,v_measure,silhouette_spatial,penalty, silhouette,davies_bouldin
 
 
 

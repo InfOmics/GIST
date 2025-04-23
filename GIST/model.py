@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 
+
+
 # Define the GCN Layer
 class GCNLayer(nn.Module):
     """
@@ -55,6 +57,7 @@ class GCNLayer(nn.Module):
             output = F.relu(output)
         return output
     
+
 class Discriminator(nn.Module):
     """
     Discriminator module for contrastive learning.
@@ -75,9 +78,6 @@ class Discriminator(nn.Module):
             self.weights_init(m)
 
     def weights_init(self, m):
-        """
-        Initialize weights for Bilinear layer using Xavier initialization.
-        """
         if isinstance(m, nn.Bilinear):
             torch.nn.init.xavier_uniform_(m.weight.data)
             if m.bias is not None:
@@ -123,6 +123,8 @@ class Discriminator(nn.Module):
 
         return logits
     
+# Applies an average on seq, of shape (batch, nodes, features)
+# While taking into account the masking of msk
 class AvgReadout(nn.Module):
     """
     Average Readout module.
@@ -154,7 +156,7 @@ class AvgReadout(nn.Module):
         
 
 
-class GNN(nn.Module):
+class GCN(nn.Module):
     """
     Graph Neural Network with contrastive and local-global representation learning.
 
@@ -170,24 +172,25 @@ class GNN(nn.Module):
     out_dim : int
         Dimension of output embeddings (projected space).
     """
-    def __init__(self, in_dim, hidden_dim, out_dim):
-        super(GNN, self).__init__()
+    def __init__(self, in_dim,hidden_dim, out_dim):
         
-        # GNN layers (positive branch)
+        super(GCN, self).__init__()
+        # GNN layers
+        
         self.conv1 = GCNLayer(in_dim, hidden_dim)
         self.conv2 = GCNLayer(hidden_dim, out_dim)
 
-        # GNN layers (negative/corrupted branch)
         self.conv1_neg = GCNLayer(in_dim, hidden_dim)
         self.conv2_neg = GCNLayer(hidden_dim, out_dim)
 
-        # Discriminator for contrastive loss
         self.discriminator = Discriminator(out_dim)
+        self.sigmoid= nn.Sigmoid()
+        self.readout= AvgReadout()
         
-        self.sigmoid = nn.Sigmoid()
-        self.readout = AvgReadout()
+        
 
-    def forward(self, x, x_neg, edge_index, sp_neigh, DGSItraining=False):
+    
+    def forward(self, x, x_neg, adj, sp_neigh, DGSItraining=False):
         """
         Forward pass for the GNN.
 
@@ -197,7 +200,7 @@ class GNN(nn.Module):
             Original node features.
         x_neg : torch.Tensor
             Corrupted node features.
-        edge_index : torch.Tensor
+        adj : torch.Tensor
             Adjacency matrix (preprocessed).
         sp_neigh : torch.Tensor
             Local neighborhood mask (for spatial or graph structure).
@@ -212,31 +215,31 @@ class GNN(nn.Module):
             If `DGSItraining` is True:
                 Returns embeddings and discriminator scores for contrastive loss.
         """
-        # Standard embedding (no contrastive training)
         if not DGSItraining:
-            h = self.conv1(x, edge_index)
-            h = self.conv2(h, edge_index, active=False)
+            h =self.conv1(x, adj )
+            h = self.conv2(h, adj , active=False)   # Final embeddings
+         
             return h
+        elif DGSItraining:
+            h =self.conv1(x, adj )
+            h = self.conv2(h, adj, active=False) # Final embeddings
+            z=F.relu(h)
+ 
 
-        # Contrastive training mode
-        h_pos = self.conv1(x, edge_index)
-        z_pos = self.conv2(h_pos, edge_index, active=False)
-        z_pos = F.relu(z_pos)
+            h_neg =self.conv1_neg(x_neg, adj, )
+            z_neg = self.conv2_neg(h_neg, adj )  # Final embeddings
 
-        h_neg = self.conv1_neg(x_neg, edge_index)
-        z_neg = self.conv2_neg(h_neg, edge_index)
 
-        # Global summary embedding
-        g_global = self.readout(z_pos)
-        g_global = self.sigmoid(g_global)
+            g = self.readout(z) 
+            g = self.sigmoid(g)
+            
+            g_l = self.readout(z, sp_neigh) 
+            g_l = self.sigmoid(g_l) 
 
-        # Local summary embedding (e.g., spatially-aware)
-        g_local = self.readout(z_pos, sp_neigh)
-        g_local = self.sigmoid(g_local)
 
-        # Discriminator scores for global and local contrastive loss
-        score_global = self.discriminator(g_global, z_pos, z_neg)
-        score_local = self.discriminator(g_local, z_pos, z_neg)
+            pos_score = self.discriminator(g, z, z_neg)  
+  
+            pos_score_local = self.discriminator(g_l, z, z_neg)  
 
-        return z_pos, score_global, score_local
+            return h, pos_score, pos_score_local
     

@@ -1,12 +1,10 @@
-  
-from GIST.GIST import GIST
-import torch
-from GIST.utils.clustering import clusters_n_plot
-device =  "cuda" if torch.cuda.is_available() else "cpu"
 
 import scanpy as sc
 import numpy as np
 import pandas as pd
+from GIST.utils.clustering import cluster_n_plot
+from GIST.GIST import GIST
+import torch
 
 
 def read_adata(path, is_h5ad=False):
@@ -20,9 +18,6 @@ def read_adata(path, is_h5ad=False):
         adata.var_names_make_unique()
         adata.obsm["spatial"]=adata.obsm["spatial"].astype(float)
     return adata
-
-
-
 
 
 def fromlayerstonumber (layers):
@@ -57,24 +52,18 @@ def fromlayerstonumberMHC(adata):
     adata.obs["ground_truth"] = (
     adata.obs["cluster"].astype("category").cat.codes + 1
 ).astype(str)
-
    
 def fromlayerstonumberMVC(adata):
    adata.obs["ground_truth"] = (
     adata.obs["label"].astype("category").cat.codes + 1
 ).astype(str)
 
-
-
-
-
-
 def get_adata(path='',data_name='',  is_h5ad=False):
 
 
     if path=='':
-        adata =read_adata('inputs/Data/DLPFC/151673' )
-        annotation_path="inputs/Data/DLPFC/151673/metadata.tsv"
+        adata =read_adata('inputs/spatial_data/Data/1.DLPFC/151673' )
+        annotation_path="inputs/spatial_data/Data/1.DLPFC/151673/metadata.tsv"
         df_meta = pd.read_csv(annotation_path, sep='\t')
         df_meta_layer = df_meta['layer_guess']
         adata.obs['ground_truth'] = fromlayerstonumber (df_meta_layer.values)  
@@ -111,7 +100,6 @@ def get_adata(path='',data_name='',  is_h5ad=False):
 
     return adata
 
-
 def get_cluster_size(data_name):
     n_cluster=1
     plot_size=0
@@ -147,14 +135,21 @@ def get_cluster_size(data_name):
     return n_cluster, plot_size
 
 
-
-adata=get_adata()
-seed=35
-GISTModel=GIST(adata=adata, device=device, random_seed=seed, is_visium='Visium')
+device =  "cuda" if torch.cuda.is_available() else "cpu"
+#device =   "cpu"
+data_name='DLPFC_151674' 
+adata=get_adata('inputs/spatial_data/Data/1.DLPFC/151674', data_name, is_h5ad=False) 
+""" data_name='Axolotl_Brain' 
+adata=get_adata('inputs/spatial_data/Data/Stereo/Stereo_Axolotl_Brain.h5ad', data_name, is_h5ad=True) """
+seed=35 
+is_visium='Visium'
+#is_visium='Stereo-seq'
+GISTModel=GIST(adata=adata, data_name=data_name,  device=device, random_seed=seed, is_visium=is_visium)
 adata=GISTModel.train()
-data_name='DLPFC_151673'    
-adata.write_h5ad(f"inputs/Preprocessed/{data_name}.h5ad") 
+    
+adata.write_h5ad(f"inputs/spatial_data/Data/Preprocessed/{data_name}.h5ad")
+
 n_cluster, plot_size=get_cluster_size(data_name)
-clusters_n_plot(adata, adata.obsm["DGSI"], f"outputs/{data_name}.png", n_cluster, refinement=True,plot_size=plot_size,seed=seed, is_visium=GISTModel.is_visium)
-
-
+cluster_n_plot(adata, f"outputs/{data_name}.png", n_cluster,refinement=True, seed=seed, plot_size=plot_size ,  is_visium=GISTModel.is_visium)
+    
+adata.write_h5ad(f"inputs/spatial_data/Data/Preprocessed/{data_name}.h5ad")
