@@ -1,5 +1,5 @@
 
-import ot
+
 import numpy as np
 import functools
 from scipy.sparse import issparse
@@ -9,7 +9,8 @@ from sklearn.utils.validation import check_X_y
 from sklearn.metrics.pairwise import pairwise_distances_chunked
 
 from scipy.sparse import issparse
-
+import scipy.sparse as sp
+from scipy.spatial.distance import cdist
 from collections import defaultdict, deque
 
 def _atol_for_type(dtype):
@@ -133,24 +134,28 @@ def construct_interaction(adata, n_neighbors=6):
         Binary adjacency matrix indicating neighbor relationships.
     """
     position = adata.obsm['spatial']
-    distance_matrix = ot.dist(position, position, metric='euclidean')
+    n_spots = position.shape[0]
 
-    # Store the computed distance matrix
-    adata.obsm['distance_matrix'] = distance_matrix
+    # Efficiently compute pairwise Euclidean distances
+    # Avoid full dense matrix if too large (can use blockwise method if needed)
+    distance_matrix = cdist(position, position, metric='euclidean')
 
-    # Determine nearest neighbors
+    # Get indices of k nearest neighbors (excluding self)
     nearest_neighbors = np.argsort(distance_matrix, axis=1)[:, 1:n_neighbors + 1]
 
-    # Construct adjacency matrix
-    n_spots = len(position)
-    interaction = np.zeros((n_spots, n_spots), dtype=np.uint8)
-
+    # Build sparse matrix
     row_indices = np.repeat(np.arange(n_spots), n_neighbors)
-    col_indices = nearest_neighbors.ravel()
-    interaction[row_indices, col_indices] = 1
+    col_indices = nearest_neighbors.flatten()
+    data = np.ones(len(row_indices), dtype=np.uint8)
 
-    # Ensure symmetry
-    adata.obsm['spatial_neigh'] = interaction
+    # Create sparse interaction matrix
+    interaction = sp.csr_matrix((data, (row_indices, col_indices)), shape=(n_spots, n_spots))
+
+    # Symmetrize to get undirected graph
+    adj = interaction.maximum(interaction.T)
+
+    # Store in AnnData as sparse matrices
+    adata.obsm['spatial_neigh'] = interaction.toarray()
 
 
 
@@ -258,7 +263,7 @@ def _silhouette_reduce(D_chunk, start, labels, label_freqs, adata, is_visium=Tru
     cluster_distances = np.zeros((n_chunk_samples, len(label_freqs)), dtype=np.float32)
     spot_ids = list(adata.obs.index)
 
-    if is_visium:
+    if is_visium and 'array_row' in adata.obs and len(adata.obs['array_row']) and 'array_col' in adata.obs and len(adata.obs['array_col']) :
         sp_neighs = get_sp_neighs(adata)
         n_spots = len(spot_ids)
         interaction = np.zeros((n_spots, n_spots), dtype=np.uint8)

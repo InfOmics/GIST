@@ -2,23 +2,28 @@ anndata==0.10.9
 dask==2024.8.0  
 dask-expr==1.1.10  
 dask-image==2024.5.3   
-numpy==1.24.4
+numpy==1.26.4
 pandas==2.2.1
 pot==0.9.4
 scanpy==1.10.3
-scikit-learn==1.1.2
+scikit-learn==1.4.2
 scikit-misc==0.3.1
-scipy==1.9.1
+scipy==1.13.0
 squidpy==1.6.1
 rpy2==3.5.17
-torch==2.1.0
-torchvision==0.16.0
-torchaudio==2.1.0
-triton==2.1.0
-tqdm==4.66.3 #4.64.1
-matplotlib #==3.7.5
+torch==2.3.0
+torchvision==0.18.0  
+torchaudio==2.3.0
+triton==2.3.0  
+tqdm==4.66.3  
+matplotlib==3.7.5  
 matplotlib-inline==0.1.6
 ipython
+mkl==2021.2.0
+mkl-fft  
+mkl-random==1.2.10
+mkl-service==2.4.0
+pylib-openblas==0.0.2
 
 
 

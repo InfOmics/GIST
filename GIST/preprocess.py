@@ -1,11 +1,12 @@
-import ot
+
 import numpy as np
 import pandas as pd
 import scanpy as sc
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.sparse import issparse
 from .utils.utilities import *
-
+import scipy.sparse as sp
+from scipy.spatial.distance import cdist
 
 
 def norm_data(adata):
@@ -133,7 +134,7 @@ def get_top_k_neighbors(adata, similarity_df, n_neighbors=3):
         for pos, sim in zip(neighbor_positions, selected_neighbors.values):
             interaction[index_pos, pos] = sim
 
-    adata.obsm['spatial_neigh'] = (interaction > 0).astype(int)
+    adata.obsm['spatial_neigh'] = (interaction > 0)#.astype(int)
     adj = interaction + interaction.T
     adata.obsm['adj'] = np.where(adj > 1, 1, adj)
 
@@ -169,30 +170,30 @@ def construct_interaction(adata, n_neighbors=3):
     absence (0) of a spatial connection based on k-nearest neighbors.
     """
     position = adata.obsm['spatial']
-    
-    # Compute the pairwise Euclidean distance matrix
-    distance_matrix = ot.dist(position, position, metric='euclidean')
-    
-    # Store the distance matrix in AnnData object
-    adata.obsm['distance_matrix'] = distance_matrix
-    
-    # Get k-nearest neighbors for each node (excluding itself)
-    nearest_neighbors = np.argsort(distance_matrix, axis=1)[:, 1:n_neighbors + 1]
-    
-    # Create interaction matrix efficiently
-    n_spots = distance_matrix.shape[0]
-    interaction = np.zeros((n_spots, n_spots), dtype=np.uint8)
+    n_spots = position.shape[0]
 
+    # Efficiently compute pairwise Euclidean distances
+    # Avoid full dense matrix if too large (can use blockwise method if needed)
+    distance_matrix = cdist(position, position, metric='euclidean')
+   
+
+    # Get indices of k nearest neighbors (excluding self)
+    nearest_neighbors = np.argsort(distance_matrix, axis=1)[:, 1:n_neighbors + 1]
+
+    # Build sparse matrix
     row_indices = np.repeat(np.arange(n_spots), n_neighbors)
     col_indices = nearest_neighbors.flatten()
-    interaction[row_indices, col_indices] = 1  # Set k-NN connections
-    
-    # Ensure symmetry in the adjacency matrix
-    adj = np.maximum(interaction, interaction.T)
-    
-    # Store adjacency matrix in AnnData object
-    adata.obsm['spatial_neigh'] = interaction
-    adata.obsm['adj'] = adj 
+    data = np.ones(len(row_indices), dtype=np.uint8)
+
+    # Create sparse interaction matrix
+    interaction = sp.csr_matrix((data, (row_indices, col_indices)), shape=(n_spots, n_spots))
+
+    # Symmetrize to get undirected graph
+    adj = interaction.maximum(interaction.T)
+
+    # Store in AnnData as sparse matrices
+    adata.obsm['spatial_neigh'] = interaction.toarray()
+    adata.obsm['adj'] = adj.toarray() 
 
 
 
@@ -203,7 +204,7 @@ def get_graph_weight_normalized(data):
 
 
 
-def create_graph(adata, is_visium=1,  seed=35):
+def create_graph(adata, is_visium=1):
     """
     Preprocesses and create the graph from the AnnData object.
 
@@ -231,6 +232,8 @@ def create_graph(adata, is_visium=1,  seed=35):
         Preprocessed AnnData object with spatial and expression-based neighborhood graphs
         stored in `.obsm`.
     """
+    
+
     if is_visium and 'array_row' in adata.obs and len(adata.obs['array_row']) and 'array_col' in adata.obs and len(adata.obs['array_col']) :
         sp_neighs = get_sp_neighs(adata)
 
@@ -245,16 +248,16 @@ def create_graph(adata, is_visium=1,  seed=35):
         # Confirm removal
         print(f"Spot size after removal: {adata.n_obs}")
 
-
-    if 'highly_variable' not in adata.var and 'log1p' not in adata.uns:
+    if 'highly_variable' not in adata.var:
         hvg_genes=hvg(adata)
         norm_data(adata)
         adata= adata[:,hvg_genes]
 
+
     if issparse(adata.X):
-            data=pca ( adata.X.toarray(), n_components=20,random_state=seed) 
+            data=pca ( adata.X.toarray(), n_components=20) 
     else:
-            data=pca ( adata.X, n_components=20,random_state=seed) #if data already a matrix
+            data=pca ( adata.X, n_components=20) #if data already a matrix
 
     adata.obsm["X_pca"]=data
     cosine_similarities_normalized=get_graph_weight_normalized(data)

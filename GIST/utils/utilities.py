@@ -7,7 +7,7 @@ from sklearn.decomposition import PCA
 
 def pca (X, n_components=20,random_state=42):
 
-    pca = PCA(n_components, random_state=42) 
+    pca = PCA(n_components,   random_state=42) 
 
     return pca.fit_transform(X)
 
@@ -18,6 +18,7 @@ def set_seed(seed):
         os.environ['PYTHONHASHSEED'] = str(seed)
         os.environ["MKL_CBWR"] = "COMPATIBLE"   
         
+
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)

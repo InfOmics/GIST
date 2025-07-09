@@ -5,7 +5,8 @@ import pandas as pd
 from GIST.utils.clustering import cluster_n_plot
 from GIST.GIST import GIST
 import torch
-
+import time
+import tracemalloc
 
 def read_adata(path, is_h5ad=False):
     #Todo: add check if Visium, if 'filtered_feature_bc_matrix.h5' or 'data_name_filtered_feature_bc_matrix.h5'
@@ -137,19 +138,65 @@ def get_cluster_size(data_name):
 
 device =  "cuda" if torch.cuda.is_available() else "cpu"
 #device =   "cpu"
-data_name='DLPFC_151674' 
+
+
+seed=35
+
+data_name='DLPFC_151673' 
+data_type='Visium'
+refinement=True
+adata=get_adata('inputs/spatial_data/Data/1.DLPFC/151673', data_name, is_h5ad=False) 
+ 
+
+""" data_name='DLPFC_151510' 
+data_type='Visium'
+refinement=True
+adata=get_adata('inputs/spatial_data/Data/1.DLPFC/151510', data_name, is_h5ad=False) 
+ """
+
+""" data_name='DLPFC_151674' 
+data_type='Visium'
+refinement=True
 adata=get_adata('inputs/spatial_data/Data/1.DLPFC/151674', data_name, is_h5ad=False) 
+ """
+
+""" data_name='Human_Breast_Cancer' 
+data_type='Visium'
+refinement=True
+adata=get_adata('inputs/spatial_data/Data/3.Human_Breast_Cancer', data_name, is_h5ad=False) 
+ """
+
 """ data_name='Axolotl_Brain' 
-adata=get_adata('inputs/spatial_data/Data/Stereo/Stereo_Axolotl_Brain.h5ad', data_name, is_h5ad=True) """
-seed=35 
-is_visium='Visium'
-#is_visium='Stereo-seq'
-GISTModel=GIST(adata=adata, data_name=data_name,  device=device, random_seed=seed, is_visium=is_visium)
+data_type='Stereo-seq'
+refinement=False
+device =   "cpu"
+adata=get_adata('inputs/spatial_data/Data/Stereo/Stereo_Axolotl_Brain.h5ad', data_name, is_h5ad=True) 
+ """
+
+""" data_name='Mouse_Visual_Cortex' 
+data_type='STARmap'
+refinement=True
+adata=get_adata('inputs/spatial_data/Data/14.STARmap_mouse_visual_cortex/STARmap_20180505_BY3_1k.h5ad', data_name, is_h5ad=True) 
+ """
+
+# Start measuring time and memory
+start_time = time.time()
+tracemalloc.start()
+
+GISTModel=GIST(adata=adata,  device=device, random_seed=seed, data_type=data_type)
 adata=GISTModel.train()
-    
+
+current, peak = tracemalloc.get_traced_memory()
+end_time = time.time()
+tracemalloc.stop()
+
+print(f"Execution time: {end_time - start_time:.4f} seconds")
+print(f"Current memory usage: {current / 10**6:.4f} MB")
+print(f"Peak memory usage: {peak / 10**6:.4f} MB")   
+
 adata.write_h5ad(f"inputs/spatial_data/Data/Preprocessed/{data_name}.h5ad")
 
 n_cluster, plot_size=get_cluster_size(data_name)
-cluster_n_plot(adata, f"outputs/{data_name}.png", n_cluster,refinement=True, seed=seed, plot_size=plot_size ,  is_visium=GISTModel.is_visium)
+cluster_n_plot(adata, f"outputs/{data_name}.png", n_cluster,refinement=refinement, seed=seed, plot_size=plot_size ,  is_visium=GISTModel.is_visium)
     
 adata.write_h5ad(f"inputs/spatial_data/Data/Preprocessed/{data_name}.h5ad")

@@ -29,9 +29,9 @@ class GCNLayer(nn.Module):
         super(GCNLayer, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.weight = Parameter(torch.empty(in_features, out_features, dtype=torch.float64))  # Use empty() + float64
-        torch.nn.init.xavier_uniform_(self.weight)
-
+        weight = torch.empty(in_features, out_features, dtype=torch.float64, device='cpu')
+        torch.nn.init.xavier_uniform_(weight)
+        self.weight = Parameter(weight)  
         
     def forward(self, features, adj, active=True):
         """
@@ -57,6 +57,73 @@ class GCNLayer(nn.Module):
             output = F.relu(output)
         return output
     
+class AvgReadout(nn.Module):
+    """
+    Average Readout module.
+
+    Computes a summary representation for nodes or neighborhoods
+    by averaging feature vectors. If a mask is provided, it performs
+    a masked average (e.g., local neighborhood aggregation).
+
+    Methods
+    -------
+    forward(seq, msk=None)
+        Returns the average of the input sequence, optionally masked.
+    """
+    def __init__(self):
+        super(AvgReadout, self).__init__()
+
+    def forward(self, seq, msk=None):
+        if msk is None:
+            return torch.mean(seq, 1)
+        else:
+            """
+            Computes local neighborhood summary s_l for each node.
+
+            adj_dense: Dense adjacency matrix (N, N) with self-loops.
+            h: Node embeddings (N, hidden_dim).
+            """
+            msk = torch.unsqueeze(msk, -1)
+            return torch.sum(seq * msk, 1) / torch.sum(msk) # Mean of neighbors' embeddings, degree |N_i|
+        
+
+class GCNLayer_sparse(nn.Module):
+    def __init__(self, in_features, out_features ):
+        super(GCNLayer_sparse, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.dropout=0.0
+        self.weight = Parameter(torch.empty(in_features, out_features, dtype=torch.float64))  # Use empty() + float64
+        torch.nn.init.xavier_uniform_(self.weight)
+
+        
+    def forward(self, features, adj, active=True):
+        support = torch.mm(features, self.weight)
+        output = torch.sparse.mm(adj, support)
+        if active:
+            output = F.relu(output)
+        return output
+
+class AvgReadout_sparse(nn.Module):
+    def __init__(self):
+        super(AvgReadout_sparse, self).__init__()
+
+    def forward(self, seq, msk=None):
+        if msk is None:
+            return torch.mean(seq, 1)
+        else:
+            """
+            Computes local neighborhood summary s_l for each node.
+
+            adj_dense: Dense adjacency matrix (N, N) with self-loops.
+            h: Node embeddings (N, hidden_dim).
+            """
+            #   seq: (N, d) dense tensor
+            deg = torch.sparse.sum(msk, dim=1).to_dense().unsqueeze(1)  
+            neighbor_sum = torch.sparse.mm(msk, seq)                   
+            out = neighbor_sum / deg   
+            return out                                                 
+         
 
 class Discriminator(nn.Module):
     """
@@ -123,37 +190,7 @@ class Discriminator(nn.Module):
 
         return logits
     
-# Applies an average on seq, of shape (batch, nodes, features)
-# While taking into account the masking of msk
-class AvgReadout(nn.Module):
-    """
-    Average Readout module.
 
-    Computes a summary representation for nodes or neighborhoods
-    by averaging feature vectors. If a mask is provided, it performs
-    a masked average (e.g., local neighborhood aggregation).
-
-    Methods
-    -------
-    forward(seq, msk=None)
-        Returns the average of the input sequence, optionally masked.
-    """
-    def __init__(self):
-        super(AvgReadout, self).__init__()
-
-    def forward(self, seq, msk=None):
-        if msk is None:
-            return torch.mean(seq, 1)
-        else:
-            """
-            Computes local neighborhood summary s_l for each node.
-
-            adj_dense: Dense adjacency matrix (N, N) with self-loops.
-            h: Node embeddings (N, hidden_dim).
-            """
-            msk = torch.unsqueeze(msk, -1)
-            return torch.sum(seq * msk, 1) / torch.sum(msk) # Mean of neighbors' embeddings, degree |N_i|
-        
 
 
 class GCN(nn.Module):
@@ -172,25 +209,34 @@ class GCN(nn.Module):
     out_dim : int
         Dimension of output embeddings (projected space).
     """
-    def __init__(self, in_dim,hidden_dim, out_dim):
+    def __init__(self, in_dim,hidden_dim, out_dim, use_sparse=False):
         
         super(GCN, self).__init__()
         # GNN layers
+        if use_sparse:
         
-        self.conv1 = GCNLayer(in_dim, hidden_dim)
-        self.conv2 = GCNLayer(hidden_dim, out_dim)
+            self.conv1 = GCNLayer_sparse(in_dim, hidden_dim)
+            self.conv2 = GCNLayer_sparse(hidden_dim, out_dim)
 
-        self.conv1_neg = GCNLayer(in_dim, hidden_dim)
-        self.conv2_neg = GCNLayer(hidden_dim, out_dim)
+            self.conv1_neg = GCNLayer_sparse(in_dim, hidden_dim)
+            self.conv2_neg = GCNLayer_sparse(hidden_dim, out_dim)
+            self.readout=AvgReadout_sparse()
+        else:
+            self.conv1 = GCNLayer(in_dim, hidden_dim)
+            self.conv2 = GCNLayer(hidden_dim, out_dim)
+
+            self.conv1_neg = GCNLayer(in_dim, hidden_dim)
+            self.conv2_neg = GCNLayer(hidden_dim, out_dim)
+            self.readout= AvgReadout()
 
         self.discriminator = Discriminator(out_dim)
         self.sigmoid= nn.Sigmoid()
-        self.readout= AvgReadout()
+        
         
         
 
-    
-    def forward(self, x, x_neg, adj, sp_neigh, DGSItraining=False):
+
+    def forward(self, x, x_neg, adj, sp_neigh, IsTraining=False):
         """
         Forward pass for the GNN.
 
@@ -204,31 +250,31 @@ class GCN(nn.Module):
             Adjacency matrix (preprocessed).
         sp_neigh : torch.Tensor
             Local neighborhood mask (for spatial or graph structure).
-        DGSItraining : bool, optional
+        IsTraining : bool, optional
             Whether to perform full DGSIGNN training or just forward embedding.
 
         Returns
         -------
         torch.Tensor or tuple
-            If `DGSItraining` is False:
+            If `IsTraining` is False:
                 Returns final node embeddings.
-            If `DGSItraining` is True:
+            If `IsTraining` is True:
                 Returns embeddings and discriminator scores for contrastive loss.
         """
-        if not DGSItraining:
+        if not IsTraining:
             h =self.conv1(x, adj )
             h = self.conv2(h, adj , active=False)   # Final embeddings
          
             return h
-        elif DGSItraining:
+        elif IsTraining:
+          
             h =self.conv1(x, adj )
             h = self.conv2(h, adj, active=False) # Final embeddings
             z=F.relu(h)
- 
 
+            
             h_neg =self.conv1_neg(x_neg, adj, )
             z_neg = self.conv2_neg(h_neg, adj )  # Final embeddings
-
 
             g = self.readout(z) 
             g = self.sigmoid(g)
@@ -236,9 +282,7 @@ class GCN(nn.Module):
             g_l = self.readout(z, sp_neigh) 
             g_l = self.sigmoid(g_l) 
 
-
-            pos_score = self.discriminator(g, z, z_neg)  
-  
+            pos_score = self.discriminator(g, z, z_neg)   
             pos_score_local = self.discriminator(g_l, z, z_neg)  
 
             return h, pos_score, pos_score_local

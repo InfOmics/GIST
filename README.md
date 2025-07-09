@@ -30,3 +30,8 @@ pip install git+https://github.com/gospelnnadi/GIST.git
 ````
 
 run_GIST.py  contains the GIST pipeline. 
+python run_GIST.py &> output.log
+
+### Data Availability ###
+The spatial transcriptomics datasets are available at:  https://doi.org/10.5281/zenodo.15277298
+
