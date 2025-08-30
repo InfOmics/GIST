@@ -257,7 +257,7 @@ def cluster_n_plot(adata, savepath, num_cluster=7,refinement=True, seed=35, plot
         ASW=compute_ASW(adata.obs["cluster"],adata.obsm['spatial'])    
         print("ASW:",np.round(ASW,4))
     else: 
-        silhouette_spatial,silhouette,davies_bouldin,chaos,pas,ASW = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        silhouette_spatial,penalty,silhouette,davies_bouldin,chaos,pas,ASW = 0.0,0.0, 0.0, 0.0, 0.0, 0.0, 0.0
         print("Cluster size is less than 2")
 
     if plot_size:
