@@ -236,7 +236,7 @@ def cluster_n_plot(adata, savepath, num_cluster=7,refinement=True, seed=35, plot
     else: 
        ARI,ami,purity,homogeneity,completeness,v_measure=0.0,0.0,0.0,0.0,0.0,0.0
     
-    if len(adata.obs["cluster"])>1:
+    if len(np.unique(adata.obs["cluster"]))>1:
 
         silhouette_spatial = silhouette_spatial_score(adata.obsm["X_pca"], adata.obs["cluster"], adata, metric="cosine", is_visium=is_visium) 
         print("silhouette spatial:",np.round(silhouette_spatial,4))
