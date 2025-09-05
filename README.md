@@ -20,7 +20,8 @@ pip install -r requirements.txt
 ````
 Install mclust packages
 ````
-Rscript -e 'install.packages("mclust",repos="http://cran.us.r-project.org")'
+Rscript -e 'install.packages("mclust", repos="https://cran.r-project.org", type="source")'
+
 
 ````
 install GIST packages
