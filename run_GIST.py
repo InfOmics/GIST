@@ -39,7 +39,7 @@ def fromlayerstonumber (layers):
     elif sub == 'WM':
       res.append(str(sub).replace('WM', '7'))
     elif str(sub)=='nan' :
-      res.append( res[-1]) ##nan
+      res.append( "-1") ##nan
   return res
 
 def fromlayerstonumberMBA (df_meta_layer):
