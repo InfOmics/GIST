@@ -10,7 +10,7 @@ scikit-learn==1.4.2
 scikit-misc==0.3.1
 scipy==1.13.0
 squidpy==1.6.1
-rpy2==3.5.17
+rpy2==3.5.12
 torch==2.3.0
 torchvision==0.18.0  
 torchaudio==2.3.0
