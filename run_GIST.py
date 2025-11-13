@@ -203,6 +203,6 @@ cluster_n_plot(adata, f"outputs/{data_name}.png", n_cluster,refinement=refinemen
 adata_raw.obs['cluster']='-1'
 common = adata.obs_names.intersection(adata_raw.obs_names)
 adata_raw.obs.loc[common, 'cluster'] = adata.obs.loc[common, 'cluster'].values
-adata_raw.uns['DGSI']=adata.obsm['DGSI']
+adata_raw.uns['GIST_emb']=adata.obsm['GIST_emb']
     
 adata.write_h5ad(f"inputs/spatial_data/Data/Preprocessed/{data_name}.h5ad")
