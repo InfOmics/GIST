@@ -178,7 +178,7 @@ data_type='STARmap'
 refinement=True
 adata=get_adata('inputs/spatial_data/Data/14.STARmap_mouse_visual_cortex/STARmap_20180505_BY3_1k.h5ad', data_name, is_h5ad=True) 
  """
-
+adata_raw=adata.copy()
 # Start measuring time and memory
 start_time = time.time()
 tracemalloc.start()
@@ -198,5 +198,11 @@ adata.write_h5ad(f"inputs/spatial_data/Data/Preprocessed/{data_name}.h5ad")
 
 n_cluster, plot_size=get_cluster_size(data_name)
 cluster_n_plot(adata, f"outputs/{data_name}.png", n_cluster,refinement=refinement, seed=seed, plot_size=plot_size ,  is_visium=GISTModel.is_visium)
+
+# Isolated spots are not considered in the clustering. If necessary copy the cluster label in the raw adata 
+adata_raw.obs['cluster']='-1'
+common = adata.obs_names.intersection(adata_raw.obs_names)
+adata_raw.obs.loc[common, 'cluster'] = adata.obs.loc[common, 'cluster'].values
+adata_raw.uns['DGSI']=adata.obsm['DGSI']
     
 adata.write_h5ad(f"inputs/spatial_data/Data/Preprocessed/{data_name}.h5ad")
