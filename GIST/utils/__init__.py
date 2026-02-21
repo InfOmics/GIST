@@ -4,6 +4,6 @@
 # File Name: __init__.py
 # Description:
 """
-from .clustering import clustering, plot_n_evaluate_cluster
+from .clustering import mclust_clustering, plot_n_evaluate_cluster
 from .silhouette_spatial import silhouette_spatial_score  
 from .utilities import pca, set_seed

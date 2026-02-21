@@ -198,7 +198,7 @@ print(f"Peak memory usage: {peak / 10**6:.4f} MB")
 adata.write_h5ad(f"inputs/spatial_data/Data/Preprocessed/{data_name}.h5ad")
 
 n_cluster, plot_size=get_cluster_size(data_name)
-adata= clustering(adata,n_pca=emb_size, num_cluster=n_cluster,refinement=refinement, seed=seed)
+adata= mclust_clustering(adata,n_pca=emb_size, num_cluster=n_cluster,refinement=refinement, seed=seed)
 plot_n_evaluate_cluster(adata, f"outputs/{data_name}.png", plot_size=plot_size,  is_visium=GISTModel.is_visium)
 
 # Isolated spots are not considered in the clustering. If necessary copy the cluster label in the raw adata 

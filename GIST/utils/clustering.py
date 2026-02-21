@@ -123,7 +123,7 @@ def refine_label(adata, radius=50, label_key='label'):
     
     return refined_label
 
-def clustering(adata,n_pca=32, num_cluster=7,refinement=True, seed=35):
+def mclust_clustering(adata,n_pca=32, num_cluster=7,refinement=True, seed=35):
     """
     Perform clustering, optional label refinement
 
