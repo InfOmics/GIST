@@ -203,7 +203,10 @@ def cluster_n_plot(adata, savepath, num_cluster=7,refinement=True, seed=35, plot
     # Print the first few clusters
     print(np.unique(mclust_res))
 
-    adata.obs["mclust"]=np.array( mclust_res).astype(str)
+    mclust_res = np.array(mclust_res)
+    mclust_res = np.where(np.isnan(mclust_res), "-1",  mclust_res)
+
+    adata.obs["mclust"]=mclust_res.astype(str)
 
     if refinement:
         adata.obs["cluster"] = refine_label(adata, radius=50, label_key='mclust') 
