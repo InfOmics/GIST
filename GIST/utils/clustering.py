@@ -219,7 +219,7 @@ def plot_n_evaluate_cluster(adata, savepath, plot_size=0,  is_visium=True):
 
     Returns
     -------
-    None
+    Scores
         Metrics printed include:
         - Adjusted Rand Index (ARI)
         - Adjusted Mutual Information (AMI)
