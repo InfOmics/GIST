@@ -123,46 +123,30 @@ def refine_label(adata, radius=50, label_key='label'):
     
     return refined_label
 
-def cluster_n_plot(adata, savepath, num_cluster=7,refinement=True, seed=35, plot_size=0,  is_visium=True):
+def clustering(adata,n_pca=32, num_cluster=7,refinement=True, seed=35):
     """
-    Perform clustering, optional label refinement, evaluation, and spatial plotting.
+    Perform clustering, optional label refinement
 
     Parameters
     ----------
     adata : AnnData
         Annotated data matrix. Requires 'spatial' in `obsm` and optionally 'ground_truth' in `obs`.
-    emb : np.ndarray
-        Embedding matrix to use for clustering.
-    savepath : str
-        Filename to save the spatial plot.
     num_cluster : int, optional
         Number of clusters for Mclust. Default is 7.
     refinement : bool, optional
         Whether to apply spatial label refinement. Default is True.
     seed : int, optional
         Random seed for reproducibility. Default is 35.
-    plot_size : float, optional
-        If greater than zero, use `sc.pl.spatial` with given spot size.
-        Otherwise, use `sq.pl.spatial_scatter`. Default is 0.
-    is_visium : bool, optional
-        Whether to assume Visium-style spatial layout for silhouette penalty. Default is True.
 
     Returns
     -------
-    None
-        Modifies `adata.obs['cluster']`, prints clustering metrics and saves spatial plots.
-        Metrics printed include:
-        - Adjusted Rand Index (ARI)
-        - Adjusted Mutual Information (AMI)
-        - Purity Score
-        - Homogeneity, Completeness, V-Measure
-        - Silhouette Score
-        - Spatial Silhouette Score with Penalty
-        - Davies-Bouldin Score
-    """
+    adata
+        Modifies `adata.obs['cluster']`,
+        """
+
  
-    if adata.obsm["GIST_emb"].shape[1] >20:
-        data= pca(adata.obsm["GIST_emb"],n_components=20, random_state=seed) 
+    if adata.obsm["GIST_emb"].shape[1] >n_pca:
+        data= pca(adata.obsm["GIST_emb"],n_components=n_pca, random_state=seed) 
     else:
           data= adata.obsm["GIST_emb"]
     """ np.random.seed(seed)
@@ -213,6 +197,38 @@ def cluster_n_plot(adata, savepath, num_cluster=7,refinement=True, seed=35, plot
     else:
        adata.obs["cluster"] = adata.obs["mclust"]   
 
+    return adata
+
+
+def plot_n_evaluate_cluster(adata, savepath, plot_size=0,  is_visium=True):
+    """
+    Perform evaluation, and spatial plotting.
+
+    Parameters
+    ----------
+    adata : AnnData
+        Annotated data matrix. Requires 'spatial' in `obsm` and optionally 'ground_truth' in `obs`.
+
+    savepath : str
+        Filename to save the spatial plot.
+    plot_size : float, optional
+        If greater than zero, use `sc.pl.spatial` with given spot size.
+        Otherwise, use `sq.pl.spatial_scatter`. Default is 0.
+    is_visium : bool, optional
+        Whether to assume Visium-style spatial layout for silhouette penalty. Default is True.
+
+    Returns
+    -------
+    None
+        Metrics printed include:
+        - Adjusted Rand Index (ARI)
+        - Adjusted Mutual Information (AMI)
+        - Purity Score
+        - Homogeneity, Completeness, V-Measure
+        - Silhouette Score
+        - Spatial Silhouette Score with Penalty
+        - Davies-Bouldin Score
+    """
     if  'ground_truth' in adata.obs and len(adata.obs['ground_truth']):
       ARI=metrics.adjusted_rand_score( adata.obs['ground_truth'], adata.obs["cluster"] )
       print('ARI:', np.round(ARI, 4))
