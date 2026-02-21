@@ -223,11 +223,9 @@ def plot_n_evaluate_cluster(adata, savepath, plot_size=0,  is_visium=True):
         Metrics printed include:
         - Adjusted Rand Index (ARI)
         - Adjusted Mutual Information (AMI)
-        - Purity Score
-        - Homogeneity, Completeness, V-Measure
+        - Homogeneity
         - Silhouette Score
         - Spatial Silhouette Score with Penalty
-        - Davies-Bouldin Score
     """
     if  'ground_truth' in adata.obs and len(adata.obs['ground_truth']):
       ARI=metrics.adjusted_rand_score( adata.obs['ground_truth'], adata.obs["cluster"] )
@@ -237,23 +235,12 @@ def plot_n_evaluate_cluster(adata, savepath, plot_size=0,  is_visium=True):
       ami = metrics.adjusted_mutual_info_score( adata.obs['ground_truth'], adata.obs["cluster"] )
       print("AMI:", np.round(ami,4))
 
-      # Purity Score
-      purity = metrics.cluster.contingency_matrix( adata.obs['ground_truth'], adata.obs["cluster"] ).max(axis=1).sum() / len(adata.obs['ground_truth'])
-      print("Purity Score:", np.round(purity, 4))
-
       # Homogeneity
       homogeneity = metrics.homogeneity_score( adata.obs['ground_truth'], adata.obs["cluster"] )
       print("Homogeneity Score:", np.round(homogeneity,4))
 
-      # Completeness
-      completeness = metrics.completeness_score( adata.obs['ground_truth'], adata.obs["cluster"] )
-      print("Completeness Score:", np.round(completeness,4))
-
-      # V-Measure
-      v_measure = metrics.v_measure_score( adata.obs['ground_truth'], adata.obs["cluster"] )
-      print("V-Measure Score:", np.round(v_measure, 4))
     else: 
-       ARI,ami,purity,homogeneity,completeness,v_measure=0.0,0.0,0.0,0.0,0.0,0.0
+       ARI,ami,homogeneity=0.0,0.0,0.0
     
     if len(np.unique(adata.obs["cluster"]))>1:
 
@@ -266,17 +253,8 @@ def plot_n_evaluate_cluster(adata, savepath, plot_size=0,  is_visium=True):
         silhouette = silhouette_score(adata.obsm["X_pca"], adata.obs["cluster"], metric='cosine') 
         print("silhouette:",np.round(silhouette,4))
 
-        davies_bouldin=davies_bouldin_score(adata.obsm["X_pca"], adata.obs["cluster"]) 
-        print("davies_bouldin:",np.round(davies_bouldin,4)) 
-
-        chaos=compute_CHAOS(adata.obs["cluster"],adata.obsm['spatial'])
-        print("CHAOS:",np.round(chaos,4)*100)
-        pas=compute_PAS(adata.obs["cluster"],adata.obsm['spatial'])
-        print("PAS:",np.round(pas,4))
-        ASW=compute_ASW(adata.obs["cluster"],adata.obsm['spatial'])    
-        print("ASW:",np.round(ASW,4))
     else: 
-        silhouette_spatial,penalty,silhouette,davies_bouldin,chaos,pas,ASW = 0.0,0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        silhouette_spatial,penalty,silhouette, = 0.0,0.0, 0.0
         print("Cluster size is less than 2")
 
     if plot_size:
@@ -290,7 +268,7 @@ def plot_n_evaluate_cluster(adata, savepath, plot_size=0,  is_visium=True):
       sq.pl.spatial_scatter(adata, color="cluster",cmap='Paired', save=savepath) 
       adata.uns.pop('cluster_colors')
 
-    return ARI,ami,purity,homogeneity,completeness,v_measure,silhouette_spatial,penalty, silhouette,davies_bouldin,chaos,pas,ASW
+    return ARI,ami,homogeneity,silhouette_spatial,penalty, silhouette
 
 
 
