@@ -28,6 +28,7 @@ class GIST () :
         data_type='Visium'
         ):
         self.emb_size = emb_size
+        self.use_sparse = very_large_graph
        
         if data_type == 'Visium':
             self.is_visium=True
@@ -36,8 +37,9 @@ class GIST () :
         else: # ['Slide-seq', 'STARmap', 'Stereo-seq', 'BaristaSeq']:
             self.is_visium=False
             self.emb_size = 20
+            self.use_sparse =True
 
-        self.use_sparse = very_large_graph
+       
            
 
         self.random_seed = random_seed
