@@ -142,11 +142,17 @@ device =  "cuda" if torch.cuda.is_available() else "cpu"
 
 seed=35
 
+""" data_name='Mouse_Brain_Anterior' 
+data_type='Visium'
+refinement=True
+adata=get_adata('inputs/spatial_data/Data/2.Mouse_Brain_Anterior', data_name, is_h5ad=False) 
+  """
+
 data_name='DLPFC_151673' 
 data_type='Visium'
 refinement=True
 adata=get_adata('inputs/spatial_data/Data/1.DLPFC/151673', data_name, is_h5ad=False) 
- 
+
 
 """ data_name='DLPFC_151510' 
 data_type='Visium'

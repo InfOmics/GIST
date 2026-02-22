@@ -66,6 +66,36 @@ def refine_label(adata, radius=50, label_key='label'):
     
     return refined_label
 
+
+def res_search_fixed_clus(adata, target_k, increment=0.02, seed=0):
+
+    import numpy as np
+    import scanpy as sc
+
+    best_res = None
+    best_diff = 1e9
+
+    for res in np.arange(2.5, 0.2, -increment):
+
+        sc.tl.leiden(
+            adata,
+            resolution=float(res),
+            random_state=seed,
+            key_added="leiden_tmp"
+        )
+
+        k = adata.obs["leiden_tmp"].nunique()
+        diff = abs(k - target_k)
+
+        if diff < best_diff:
+            best_diff = diff
+            best_res = float(res)
+
+        if k == target_k:
+            break
+
+    return best_res
+
 def mclust_clustering(adata,n_pca=20, num_cluster=7,refinement=True,use_mclust = True, seed=35):
     """
     Perform clustering, optional label refinement
@@ -122,8 +152,8 @@ def mclust_clustering(adata,n_pca=20, num_cluster=7,refinement=True,use_mclust =
 
         mclust_res = np.array(res[-2]).astype(int)
 
-        if mclust_res is None or len(mclust_res) == 0:
-            raise ValueError("Empty Mclust result")
+        if mclust_res is None or len(mclust_res) == 0 or np.isnan(mclust_res).any() or len(np.unique(mclust_res)) <= 1:
+            raise ValueError("Invalid Mclust result")
 
         adata.obs["mclust"] = mclust_res.astype(str)
             # ---------------------
@@ -138,12 +168,12 @@ def mclust_clustering(adata,n_pca=20, num_cluster=7,refinement=True,use_mclust =
         else:
           adata.obs["cluster"] = adata.obs["mclust"]
 
-        print("✅ Mclust success:", np.unique(mclust_res))
+        print("Mclust success:", np.unique(mclust_res))
 
 
     except Exception as e:
 
-        print("⚠️ Mclust failed → using Leiden")
+        print("Mclust failed → using Leiden")
         print("Error:", e)
 
         use_mclust = False
