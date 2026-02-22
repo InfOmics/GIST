@@ -33,7 +33,7 @@ class GIST () :
             self.is_visium=True
             self.emb_size = 32
             print(f"Using {data_type} dataset")
-        elif data_type in ['Slide-seq', 'STARmap', 'Stereo-seq', 'BaristaSeq']:
+        else: # ['Slide-seq', 'STARmap', 'Stereo-seq', 'BaristaSeq']:
             self.is_visium=False
             self.emb_size = 20
 
@@ -86,9 +86,9 @@ class GIST () :
         
 
         if issparse(adata.X):
-            self.data = pca(self.adata.X.toarray(),n_components=emb_size) 
+            self.data = pca(self.adata.X.toarray(),n_components=self.emb_size) 
         else:
-            self.data = pca(self.adata.X,n_components=emb_size)  #if data already a matrix
+            self.data = pca(self.adata.X,n_components=self.emb_size)  #if data already a matrix
         
         self.data= torch.tensor(self.data, dtype=torch.float64, device=self.device)
         
