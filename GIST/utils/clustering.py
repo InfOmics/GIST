@@ -66,7 +66,7 @@ def refine_label(adata, radius=50, label_key='label'):
     
     return refined_label
 
-def mclust_clustering(adata,n_pca=20, num_cluster=7,refinement=True, seed=35):
+def mclust_clustering(adata,n_pca=20, num_cluster=7,refinement=True,use_mclust = True, seed=35):
     """
     Perform clustering, optional label refinement
 
@@ -78,6 +78,8 @@ def mclust_clustering(adata,n_pca=20, num_cluster=7,refinement=True, seed=35):
         Number of clusters for Mclust. Default is 7.
     refinement : bool, optional
         Whether to apply spatial label refinement. Default is True.
+    use_mclust : bool, optional
+        Whether to use mclust if True else use leiden. Default is True, falls back to leiden in case mclust error.
     seed : int, optional
         Random seed for reproducibility. Default is 35.
 
@@ -92,6 +94,103 @@ def mclust_clustering(adata,n_pca=20, num_cluster=7,refinement=True, seed=35):
         data= pca(adata.obsm["GIST_emb"],n_components=n_pca, random_state=seed) 
     else:
           data= adata.obsm["GIST_emb"]
+
+    # 
+    data = np.asarray(data, dtype=np.float32)
+    data = np.nan_to_num(data)
+
+    # ---------------------
+    # Mclust
+    # ---------------------
+    try:
+     if use_mclust ==True:
+        import rpy2.robjects as robjects
+        from rpy2.robjects import numpy2ri
+        from rpy2.robjects.conversion import localconverter
+
+        robjects.r.library("mclust")
+        robjects.r["set.seed"](seed)
+
+        rmclust = robjects.r["Mclust"]
+
+        with localconverter(
+            robjects.default_converter + numpy2ri.converter
+        ):
+            r_data = robjects.conversion.py2rpy(data)
+
+        res = rmclust(r_data, G=num_cluster, modelNames="EEE")
+
+        mclust_res = np.array(res[-2]).astype(int)
+
+        if mclust_res is None or len(mclust_res) == 0:
+            raise ValueError("Empty Mclust result")
+
+        adata.obs["mclust"] = mclust_res.astype(str)
+            # ---------------------
+        # Refinement
+        # ---------------------
+        if refinement:
+            adata.obs["cluster"] = refine_label(
+            adata,
+            radius=50,
+            label_key="mclust"
+          )
+        else:
+          adata.obs["cluster"] = adata.obs["mclust"]
+
+        print("✅ Mclust success:", np.unique(mclust_res))
+
+
+    except Exception as e:
+
+        print("⚠️ Mclust failed → using Leiden")
+        print("Error:", e)
+
+        use_mclust = False
+
+    # ---------------------
+    # Leiden fallback
+    # ---------------------
+    if use_mclust ==False:
+
+        adata.obsm["X_temp"] = data
+
+        # neighbors once
+        sc.pp.neighbors(
+            adata,
+            use_rep="X_temp",
+            random_state=seed
+        )
+
+        # find resolution for desired clusters
+        res = res_search_fixed_clus(
+            adata,
+            target_k=num_cluster,
+            seed=seed
+        )
+
+        print(f"Leiden resolution found: {res}")
+
+        sc.tl.leiden(
+            adata,
+            resolution=res,
+            key_added="leiden",
+            random_state=seed
+        )
+        adata.obs["cluster"] = adata.obs["leiden"]
+        # ---------------------
+        # Cleanup temporary data
+        # ---------------------
+        if "X_temp" in adata.obsm:
+          del adata.obsm["X_temp"]
+
+        if "leiden_tmp" in adata.obs:
+          del adata.obs["leiden_tmp"]
+
+
+    return adata
+
+    
     """ np.random.seed(seed)
     import rpy2.robjects as robjects
     robjects.r.library("mclust")
@@ -103,7 +202,7 @@ def mclust_clustering(adata,n_pca=20, num_cluster=7,refinement=True, seed=35):
     rmclust = robjects.r['Mclust']
     
     res = rmclust(rpy2.robjects.numpy2ri.numpy2rpy(data), num_cluster, 'EEE') """
-    import numpy as np
+    """ import numpy as np
     np.random.seed(seed)
 
     import rpy2.robjects as robjects
@@ -137,7 +236,7 @@ def mclust_clustering(adata,n_pca=20, num_cluster=7,refinement=True, seed=35):
     else:
        adata.obs["cluster"] = adata.obs["mclust"]   
 
-    return adata
+    return adata """
 
 
 def plot_n_evaluate_cluster(adata, savepath, plot_size=0,  is_visium=True):
