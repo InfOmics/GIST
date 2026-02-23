@@ -96,7 +96,7 @@ def res_search_fixed_clus(adata, target_k, increment=0.02, seed=0):
 
     return best_res
 
-def mclust_clustering(adata,n_pca=20, num_cluster=7,refinement=True,use_mclust = True, seed=35):
+def clustering_method(adata,n_pca=20, num_cluster=7,refinement=True,use_mclust = True, seed=35):
     """
     Perform clustering, optional label refinement
 
@@ -271,9 +271,9 @@ def mclust_clustering(adata,n_pca=20, num_cluster=7,refinement=True,use_mclust =
     return adata """
 
 
-def plot_n_evaluate_cluster(adata, savepath, plot_size=0,  is_visium=True):
+def plot_cluster(adata, savepath, plot_size=0 ):
     """
-    Perform evaluation, and spatial plotting.
+    Perform spatial plotting.
 
     Parameters
     ----------
@@ -285,6 +285,38 @@ def plot_n_evaluate_cluster(adata, savepath, plot_size=0,  is_visium=True):
     plot_size : float, optional
         If greater than zero, use `sc.pl.spatial` with given spot size.
         Otherwise, use `sq.pl.spatial_scatter`. Default is 0.
+
+    Returns
+    -------
+    None
+    """
+
+    if plot_size:
+
+      os.makedirs("figures/show/outputs/dgsignn", exist_ok=True)
+
+      sc.pl.spatial(adata, color="cluster", spot_size=plot_size,save=f"/{savepath}") 
+      adata.uns.pop('cluster_colors')
+    else: 
+      
+      sq.pl.spatial_scatter(adata, color="cluster",cmap='Paired', save=savepath) 
+      adata.uns.pop('cluster_colors')
+
+    return 
+
+
+
+
+
+def  evaluate_cluster(adata, is_visium=True):
+    """
+    Perform cluster evaluation.
+
+    Parameters
+    ----------
+    adata : AnnData
+        Annotated data matrix. Requires 'spatial' in `obsm` and optionally 'ground_truth' in `obs`.
+
     is_visium : bool, optional
         Whether to assume Visium-style spatial layout for silhouette penalty. Default is True.
 
@@ -327,17 +359,6 @@ def plot_n_evaluate_cluster(adata, savepath, plot_size=0,  is_visium=True):
     else: 
         silhouette_spatial,penalty,silhouette, = 0.0,0.0, 0.0
         print("Cluster size is less than 2")
-
-    if plot_size:
-
-      os.makedirs("figures/show/outputs/dgsignn", exist_ok=True)
-
-      sc.pl.spatial(adata, color="cluster", spot_size=plot_size,save=f"/{savepath}") 
-      adata.uns.pop('cluster_colors')
-    else: 
-      
-      sq.pl.spatial_scatter(adata, color="cluster",cmap='Paired', save=savepath) 
-      adata.uns.pop('cluster_colors')
 
     return ARI,ami,homogeneity,silhouette_spatial,penalty, silhouette
 
