@@ -222,54 +222,6 @@ def clustering_method(adata,n_pca=20, num_cluster=7,refinement=True,use_mclust =
 
     return adata
 
-    
-    """ np.random.seed(seed)
-    import rpy2.robjects as robjects
-    robjects.r.library("mclust")
-
-    import rpy2.robjects.numpy2ri
-    rpy2.robjects.numpy2ri.activate()
-    r_random_seed = robjects.r['set.seed']
-    r_random_seed(seed)
-    rmclust = robjects.r['Mclust']
-    
-    res = rmclust(rpy2.robjects.numpy2ri.numpy2rpy(data), num_cluster, 'EEE') """
-    """ import numpy as np
-    np.random.seed(seed)
-
-    import rpy2.robjects as robjects
-    from rpy2.robjects import numpy2ri
-    from rpy2.robjects.conversion import localconverter
-
-    # Load R library
-    robjects.r.library("mclust")
-
-    # Set R random seed
-    robjects.r['set.seed'](seed)
-
-    # Access the Mclust function
-    rmclust = robjects.r['Mclust']
-
-    # Proper conversion of NumPy array to R object
-    with localconverter(robjects.default_converter + numpy2ri.converter):
-        r_data = robjects.conversion.py2rpy(data)
-
-    # Call Mclust (e.g., with G=num_cluster and modelNames='EEE')
-    res = rmclust(r_data, G=num_cluster, modelNames="EEE")
-
-    mclust_res = np.array(res[-2]).astype(int)
-    # Print the first few clusters
-    print(np.unique(mclust_res))
-
-    adata.obs["mclust"]=mclust_res.astype(str)
-
-    if refinement:
-        adata.obs["cluster"] = refine_label(adata, radius=50, label_key='mclust') 
-    else:
-       adata.obs["cluster"] = adata.obs["mclust"]   
-
-    return adata """
-
 
 def plot_cluster(adata, savepath, plot_size=0 ):
     """
