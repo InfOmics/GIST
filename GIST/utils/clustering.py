@@ -207,7 +207,9 @@ def mclust_clustering(adata,n_pca=20, num_cluster=7,refinement=True,use_mclust =
             key_added="leiden",
             random_state=seed
         )
-        adata.obs["cluster"] = adata.obs["leiden"]
+        adata.obs["cluster"] = np.array(adata.obs["leiden"]).satype(str)
+        print("Leiden success:", np.unique(adata.obs["leiden"]))
+
         # ---------------------
         # Cleanup temporary data
         # ---------------------
