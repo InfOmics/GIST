@@ -207,7 +207,7 @@ def clustering_method(adata,n_pca=20, num_cluster=7,refinement=True,use_mclust =
             key_added="leiden",
             random_state=seed
         )
-        adata.obs["cluster"] = np.array(adata.obs["leiden"]).satype(str)
+        adata.obs["cluster"] = np.array(adata.obs["leiden"]).astype(str)
         print("Leiden success:", np.unique(adata.obs["leiden"]))
 
         # ---------------------
