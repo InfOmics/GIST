@@ -39,7 +39,7 @@ python run_GIST.py &> output.log
 ### Data Availability ###
 The spatial transcriptomics datasets are available at:  https://doi.org/10.5281/zenodo.15277298
 
-### Citation
+### Reference
 
 G. O. Nnadi, V. Bonnici, S. Avesani, E. Viesi and R. Giugno, "Leveraging Graph Information for Spatially Informed Patient Data Analysis with GIST," 2025 IEEE Conference on Computational Intelligence in Bioinformatics and Computational Biology (CIBCB), Tainan, Taiwan, 2025, pp. 1-8, doi: 10.1109/CIBCB66090.2025.11177089. keywords: {Measurement;Computational modeling;Transcriptomics;Computer architecture;Contrastive learning;Brain modeling;Spatial databases;Graph neural networks;Indexes;Gene expression;Domain identification;Graph representation;Spatial transcriptomics}.
 
