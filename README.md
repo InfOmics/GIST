@@ -1,6 +1,6 @@
 # GIST
 Leveraging Graph Information for Spatially Informed Patient Data Analysis with GIST
-![alt text](image-1.png)
+![alt text](image.png)
 
 
 
