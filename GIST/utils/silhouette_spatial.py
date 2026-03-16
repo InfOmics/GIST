@@ -103,58 +103,90 @@ def get_sp_neighs(adata):
     dict
         A dictionary mapping spot IDs to a set of neighbor spot IDs.
     """
-    inverse_coords = {(adata.obs['array_row'][ind], adata.obs['array_col'][ind]): ind for ind in adata.obs.index}
-    sp_neighs = {ind: set() for ind in adata.obs.index}
-
+    inverse_coords = dict()
     for ind in adata.obs.index:
-        ind_row, ind_col =int(adata.obs['array_row'][ind]), int(adata.obs['array_col'][ind])
-        neighbors = [
-            (ind_row, ind_col - 2), (ind_row, ind_col + 2),
-            (ind_row - 1, ind_col - 1), (ind_row - 1, ind_col + 1),
-            (ind_row + 1, ind_col - 1), (ind_row + 1, ind_col + 1)
-        ]
-        sp_neighs[ind] = {inverse_coords[n] for n in neighbors if n in inverse_coords}
-    
+        inverse_coords[( adata.obs['array_row'][ind], adata.obs['array_col'][ind])] = ind
+    #print(len(inverse_coords))
+    sp_neighs = dict()
+    for ind in adata.obs.index:
+        sp_neighs[ind] = set()
+        ind_col = adata.obs['array_col'][ind]
+        ind_row = adata.obs['array_row'][ind]
+
+        if (ind_row, ind_col-2) in inverse_coords:
+            sp_neighs[ind].add( inverse_coords[ (ind_row, ind_col-2) ]  )
+        if (ind_row, ind_col+2) in inverse_coords:
+            sp_neighs[ind].add( inverse_coords[ (ind_row, ind_col+2) ]  )
+
+        if (ind_row-1, ind_col-1) in inverse_coords:
+            sp_neighs[ind].add( inverse_coords[ (ind_row-1, ind_col-1) ]  )
+        if (ind_row-1, ind_col+1) in inverse_coords:
+            sp_neighs[ind].add( inverse_coords[ (ind_row-1, ind_col+1) ]  )
+
+        if (ind_row+1, ind_col-1) in inverse_coords:
+            sp_neighs[ind].add( inverse_coords[ (ind_row+1, ind_col-1) ]  )
+        if (ind_row+1, ind_col+1) in inverse_coords:
+            sp_neighs[ind].add( inverse_coords[ (ind_row+1, ind_col+1) ]  )   
+            
     return sp_neighs
+
 
 def construct_interaction(adata, n_neighbors=6):
     """
-    Construct a k-nearest neighbor graph based on spatial coordinates.
+    Construct a k-nearest neighbor graph using batched pairwise distances on spatial coordinates..
 
     Parameters
     ----------
     adata : AnnData
-        Annotated data matrix with 'spatial' coordinates in `obsm`.
-    n_neighbors : int, optional
-        Number of nearest neighbors. Default is 6.
+        Annotated data matrix with spatial coordinates in `obsm['spatial']`.
+    n_neighbors : int
+        Number of neighbors. Default is 6.
 
-    Modifies
-    --------
-    adata.obsm['graph_neigh'] : np.ndarray
-        Binary adjacency matrix indicating neighbor relationships.
+    Returns
+    -------
+    Updates adata.obsm['spatial_neigh']
     """
-    position = adata.obsm['spatial']
-    n_spots = position.shape[0]
 
-    # Efficiently compute pairwise Euclidean distances
-    # Avoid full dense matrix if too large (can use blockwise method if needed)
-    distance_matrix = cdist(position, position, metric='euclidean')
+    X = adata.obsm['spatial']
+    n_spots = X.shape[0]
 
-    # Get indices of k nearest neighbors (excluding self)
-    nearest_neighbors = np.argsort(distance_matrix, axis=1)[:, 1:n_neighbors + 1]
+    rows = []
+    cols = []
 
-    # Build sparse matrix
-    row_indices = np.repeat(np.arange(n_spots), n_neighbors)
-    col_indices = nearest_neighbors.flatten()
-    data = np.ones(len(row_indices), dtype=np.uint8)
+    def reduce_func(D_chunk, start):
+        """
+        D_chunk : distance block
+        start : index of first row in this chunk
+        """
+        for i, row in enumerate(D_chunk):
+            idx = np.argpartition(row, n_neighbors + 1)[:n_neighbors + 1]
 
-    # Create sparse interaction matrix
-    interaction = sp.csr_matrix((data, (row_indices, col_indices)), shape=(n_spots, n_spots))
+            # remove self index
+            idx = idx[idx != (start + i)]
 
-    # Symmetrize to get undirected graph
-    adj = interaction.maximum(interaction.T)
+            # keep exactly k neighbors
+            idx = idx[:n_neighbors]
 
-    # Store in AnnData as sparse matrices
+            rows.extend([start + i] * n_neighbors)
+            cols.extend(idx)
+
+        return None
+
+    for _ in pairwise_distances_chunked(
+        X,
+        reduce_func=reduce_func,
+        metric="euclidean",
+        working_memory=1024
+    ):
+        pass
+
+    data = np.ones(len(rows), dtype=np.uint8)
+
+    interaction = sp.csr_matrix(
+        (data, (rows, cols)),
+        shape=(n_spots, n_spots)
+    )
+
     adata.obsm['spatial_neigh'] = interaction.toarray()
 
 
