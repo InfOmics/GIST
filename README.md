@@ -5,7 +5,12 @@ Leveraging Graph Information for Spatially Informed Patient Data Analysis with G
 
 install GIST packages
 ````
-pip install git+https://github.com/gospelnnadi/GIST.git
+pip install git+https://github.com/InfOmics/GIST.git
+
+````
+Or  
+````
+git clone https://github.com/InfOmics/GIST.git
 
 ````
 
