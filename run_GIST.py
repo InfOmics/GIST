@@ -151,8 +151,15 @@ adata=get_adata('inputs/spatial_data/Data/2.Mouse_Brain_Anterior', data_name, is
 data_name='DLPFC_151673' 
 data_type='Visium'
 refinement=True
-adata=get_adata('inputs/spatial_data/Data/1.DLPFC/151673', data_name, is_h5ad=False) 
+adata=get_adata('Data/DLPFC/151673', data_name, is_h5ad=False) 
 
+
+
+""" data_name='DLPFC_151673' 
+data_type='Visium'
+refinement=True
+adata=get_adata('inputs/spatial_data/Data/1.DLPFC/151673', data_name, is_h5ad=False) 
+ """
 
 """ data_name='DLPFC_151510' 
 data_type='Visium'
@@ -206,8 +213,9 @@ adata.write_h5ad(f"inputs/spatial_data/Data/Preprocessed/{data_name}.h5ad")
 
 n_cluster, plot_size=get_cluster_size(data_name)
 adata=clustering_method(adata,n_pca=20, num_cluster=n_cluster,refinement=refinement, seed=seed)
-plot_cluster(adata, f"outputs/{data_name}.png", plot_size=plot_size)
 evaluate_cluster(adata, is_visium=GISTModel.is_visium)
+plot_cluster(adata, f"outputs/{data_name}.png", plot_size=plot_size)
+
 
 # Isolated spots are not considered in the clustering. If necessary copy the cluster label in the raw adata 
 adata_raw.obs['cluster']='-1'

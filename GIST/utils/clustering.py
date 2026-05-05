@@ -126,8 +126,8 @@ def clustering_method(adata,n_pca=20, num_cluster=7,refinement=True,use_mclust =
           data= adata.obsm["GIST_emb"]
 
     # 
-    data = np.asarray(data, dtype=np.float32)
-    data = np.nan_to_num(data)
+    #data = np.asarray(data, dtype=np.float32)
+    #data = np.nan_to_num(data)
 
     # ---------------------
     # Mclust
@@ -143,6 +143,7 @@ def clustering_method(adata,n_pca=20, num_cluster=7,refinement=True,use_mclust =
 
         rmclust = robjects.r["Mclust"]
 
+        
         with localconverter(
             robjects.default_converter + numpy2ri.converter
         ):
